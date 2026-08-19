@@ -93,3 +93,27 @@ def personel_hareketleri(personel_id, baslangic, bitis):
 
     return sonuc.reset_index(drop=True)
 
+def personel_ilk_son_gorulme(personel_id, baslangic, bitis):
+    """
+    Personelin verilen tarih-saat aralığındaki
+    ilk ve son görülme zamanını döndürür.
+    """
+
+    df = personel_hareketleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return None
+
+    return {
+        "personel_id": personel_id,
+        "ad_soyad": (
+            f"{df.iloc[0]['PersonnelName']} "
+            f"{df.iloc[0]['PersonnelSurname']}"
+        ),
+        "ilk_gorulme": df["DeviceTime"].min(),
+        "son_gorulme": df["DeviceTime"].max(),
+    }
