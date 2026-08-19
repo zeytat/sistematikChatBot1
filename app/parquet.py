@@ -68,3 +68,28 @@ def parquet_aralik_oku(baslangic, bitis):
         ]
 
     return sonuc
+
+def personel_hareketleri(personel_id, baslangic, bitis):
+    """
+    Belirli bir personelin verilen tarih-saat aralığındaki
+    hareket kayıtlarını Parquet dosyalarından getirir.
+    """
+
+    df = parquet_aralik_oku(baslangic, bitis)
+
+    if df.empty:
+        return df
+
+    # PersonnelId sayısal değilse de karşılaştırmayı düzgün yapalım
+    df["PersonnelId"] = pd.to_numeric(
+        df["PersonnelId"],
+        errors="coerce"
+    )
+
+    sonuc = df[df["PersonnelId"] == personel_id].copy()
+
+    if "DeviceTime" in sonuc.columns:
+        sonuc = sonuc.sort_values("DeviceTime")
+
+    return sonuc.reset_index(drop=True)
+
