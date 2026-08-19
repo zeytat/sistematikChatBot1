@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+
+.env
+*.env
+
+*.parquet
+*.duckdb
+*.db
+*.sqlite
+*.csv
+
+data/
+output/
+
+.vscode/
+.idea/
