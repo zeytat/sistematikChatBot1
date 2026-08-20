@@ -117,3 +117,76 @@ def personel_ilk_son_gorulme(personel_id, baslangic, bitis):
         "ilk_gorulme": df["DeviceTime"].min(),
         "son_gorulme": df["DeviceTime"].max(),
     }
+
+def personel_lokasyonlari(personel_id, baslangic, bitis):
+    """
+    Personelin verilen tarih-saat aralığında
+    görüldüğü lokasyonları getirir.
+    """
+
+    df = personel_hareketleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    sonuc = df[
+        [
+            "DeviceTime",
+            "LocationName",
+            "PhysicalZoneName",
+            "LocationId",
+            "PhysicalZoneId"
+        ]
+    ].copy()
+
+    sonuc = sonuc.dropna(
+        subset=["LocationName", "PhysicalZoneName"],
+        how="all"
+    )
+
+    return sonuc.reset_index(drop=True)
+
+def personel_lokasyon_ziyaretleri(personel_id, baslangic, bitis):
+    """
+    Personelin aynı lokasyonda art arda bulunduğu kayıtları
+    tek bir ziyaret olarak gruplar.
+    """
+
+    df = personel_lokasyonlari(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.sort_values("DeviceTime").reset_index(drop=True)
+
+    df["ziyaret_grubu"] = (
+        (df["LocationId"] != df["LocationId"].shift()) |
+        (df["PhysicalZoneId"] != df["PhysicalZoneId"].shift())
+    ).cumsum()
+
+    ziyaretler = (
+        df.groupby("ziyaret_grubu")
+        .agg(
+            baslangic=("DeviceTime", "min"),
+            bitis=("DeviceTime", "max"),
+            lokasyon=("LocationName", "first"),
+            fiziksel_bolge=("PhysicalZoneName", "first"),
+            location_id=("LocationId", "first"),
+            physical_zone_id=("PhysicalZoneId", "first"),
+        )
+        .reset_index(drop=True)
+    )
+
+    ziyaretler["sure_saniye"] = (
+        ziyaretler["bitis"] - ziyaretler["baslangic"]
+    ).dt.total_seconds()
+
+    return ziyaretler
