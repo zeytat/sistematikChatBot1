@@ -226,3 +226,65 @@ def personel_lokasyon_sureleri(personel_id, baslangic, bitis):
     ).round(2)
 
     return sureler
+
+def personel_belirli_zamanda_konum(
+    personel_id,
+    tarih_saat,
+    tolerans_dakika=5
+):
+    """
+    Personelin verilen tarih-saat civarında en son görüldüğü konumu bulur.
+
+    tolerans_dakika:
+    Verilen zamandan önce/sonra kaç dakikalık aralıkta kayıt aranacağını belirler.
+    """
+
+    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
+    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+
+    df = personel_hareketleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return None
+
+    df = df.dropna(
+        subset=["LocationName", "PhysicalZoneName"],
+        how="all"
+    )
+
+    if df.empty:
+        return None
+
+    df["zaman_farki"] = (
+        (df["DeviceTime"] - tarih_saat)
+        .abs()
+    )
+
+    sonuc = df.sort_values("zaman_farki").iloc[0]
+
+    return {
+        "personel_id": personel_id,
+        "ad_soyad": (
+            f"{sonuc['PersonnelName']} "
+            f"{sonuc['PersonnelSurname']}"
+        ),
+        "istenen_zaman": tarih_saat,
+        "gorulme_zamani": sonuc["DeviceTime"],
+        "lokasyon": sonuc["LocationName"],
+        "fiziksel_bolge": sonuc["PhysicalZoneName"],
+        "zaman_farki_saniye": (
+            sonuc["zaman_farki"].total_seconds()
+        )
+    }
+
+sonuc = personel_belirli_zamanda_konum(
+    9584,
+    datetime(2026, 7, 31, 9, 21),
+    tolerans_dakika=5
+)
+
+print(sonuc)
