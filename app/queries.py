@@ -31,3 +31,18 @@ def personel_bul(ad, soyad):
     )
 
     return result
+
+def personel_id_bul(ad, soyad):
+    """
+    Ad ve soyada göre tek bir personel varsa
+    Personnel.Id değerini döndürür.
+
+    Birden fazla eşleşme varsa None döndürür.
+    """
+
+    result = personel_bul(ad, soyad)
+
+    if len(result) != 1:
+        return None
+
+    return int(result.iloc[0]["Id"])
