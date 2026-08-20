@@ -46,3 +46,31 @@ def personel_id_bul(ad, soyad):
         return None
 
     return int(result.iloc[0]["Id"])
+
+from app.parquet import personel_hareketleri
+
+
+def personel_hareketlerini_bul(
+    ad,
+    soyad,
+    baslangic,
+    bitis
+):
+    """
+    Ad ve soyada göre personeli bulur,
+    ardından ilgili personelin Parquet hareketlerini getirir.
+    """
+
+    personel_id = personel_id_bul(
+        ad,
+        soyad
+    )
+
+    if personel_id is None:
+        return None
+
+    return personel_hareketleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
