@@ -114,3 +114,89 @@ def sorguyu_analiz_et(metin):
         "intent": sorgu_turu_bul(metin),
         "personel": personel_adi_bul(metin)
     }
+
+from datetime import datetime, timedelta
+import re
+
+
+def tarih_araligi_bul(metin):
+    """
+    Metinden tarih bilgisini bulur ve gün başlangıcı/bitişi döndürür.
+
+    Desteklenen örnekler:
+    - 31 Temmuz
+    - 31 Temmuz 2026
+    - 31.07.2026
+    - 31/07/2026
+    """
+
+    aylar = {
+        "ocak": 1,
+        "şubat": 2,
+        "mart": 3,
+        "nisan": 4,
+        "mayıs": 5,
+        "haziran": 6,
+        "temmuz": 7,
+        "ağustos": 8,
+        "eylül": 9,
+        "ekim": 10,
+        "kasım": 11,
+        "aralık": 12
+    }
+
+    metin_kucuk = metin.lower()
+
+    # Örnek: 31 Temmuz 2026 veya 31 Temmuz
+    eslesme = re.search(
+        r"\b(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?\b",
+        metin_kucuk
+    )
+
+    if eslesme:
+        gun = int(eslesme.group(1))
+        ay_adi = eslesme.group(2)
+        yil = eslesme.group(3)
+
+        if ay_adi in aylar:
+            yil = int(yil) if yil else datetime.now().year
+
+            baslangic = datetime(
+                yil,
+                aylar[ay_adi],
+                gun
+            )
+
+            bitis = baslangic + timedelta(days=1)
+
+            return baslangic, bitis
+
+    # Örnek: 31.07.2026 veya 31/07/2026
+    eslesme = re.search(
+        r"\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b",
+        metin_kucuk
+    )
+
+    if eslesme:
+        gun = int(eslesme.group(1))
+        ay = int(eslesme.group(2))
+        yil = int(eslesme.group(3))
+
+        baslangic = datetime(
+            yil,
+            ay,
+            gun
+        )
+
+        bitis = baslangic + timedelta(days=1)
+
+        return baslangic, bitis
+
+    return None
+
+
+print(
+    tarih_araligi_bul(
+        "Yücel Durmuş 31 Temmuz'da hangi lokasyonlarda bulundu?"
+    )
+)
