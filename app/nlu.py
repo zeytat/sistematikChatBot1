@@ -103,3 +103,14 @@ def personel_adi_bul(metin):
         "ad": ad,
         "soyad": soyad
     }
+
+def sorguyu_analiz_et(metin):
+    """
+    Doğal dildeki kullanıcı sorgusunu
+    yapılandırılmış bir sözlüğe dönüştürür.
+    """
+
+    return {
+        "intent": sorgu_turu_bul(metin),
+        "personel": personel_adi_bul(metin)
+    }
