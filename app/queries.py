@@ -123,7 +123,33 @@ def sorgu_calistir(metin):
             "hata": "Sorguda tarih bilgisi bulunamadı."
         }
 
+    if intent in ["ilk_gorulme", "son_gorulme"]:
+
+        hareketler = personel_hareketlerini_bul(
+            personel["ad"],
+            personel["soyad"],
+            baslangic,
+            bitis
+        )
+
+        if hareketler is None or hareketler.empty:
+            return {
+                "hata": "Bu tarih aralığında personel hareketi bulunamadı."
+            }
+
+        if intent == "ilk_gorulme":
+            kayit = hareketler.iloc[0]
+        else:
+            kayit = hareketler.iloc[-1]
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "zaman": kayit["DeviceTime"]
+        }
+
     if intent == "lokasyon_suresi":
+
         sonuc = personel_lokasyon_sorgusu(
             personel["ad"],
             personel["soyad"],
@@ -146,10 +172,11 @@ def sorgu_calistir(metin):
         "hata": f"Desteklenmeyen sorgu türü: {intent}"
     }
 
+
 from app.nlu import sorguyu_analiz_et
 
 
-sorgu = "Yücel Durmuş 31 Temmuz'da hangi lokasyonlarda bulundu?"
+sorgu = "Yücel Durmuş 31 Temmuz'da son ne zaman görüldü?"
 
 sonuc = sorgu_calistir(sorgu)
 

@@ -280,11 +280,3 @@ def personel_belirli_zamanda_konum(
             sonuc["zaman_farki"].total_seconds()
         )
     }
-
-sonuc = personel_belirli_zamanda_konum(
-    9584,
-    datetime(2026, 7, 31, 9, 21),
-    tolerans_dakika=5
-)
-
-print(sonuc)
