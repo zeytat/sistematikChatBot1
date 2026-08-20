@@ -190,3 +190,39 @@ def personel_lokasyon_ziyaretleri(personel_id, baslangic, bitis):
     ).dt.total_seconds()
 
     return ziyaretler
+
+def personel_lokasyon_sureleri(personel_id, baslangic, bitis):
+    """
+    Personelin her lokasyonda toplam ne kadar süre
+    geçirdiğini hesaplar.
+    """
+
+    ziyaretler = personel_lokasyon_ziyaretleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if ziyaretler.empty:
+        return pd.DataFrame()
+
+    sureler = (
+        ziyaretler
+        .groupby(
+            ["location_id", "physical_zone_id", "lokasyon", "fiziksel_bolge"],
+            dropna=False
+        )["sure_saniye"]
+        .sum()
+        .reset_index()
+    )
+
+    sureler = sureler.sort_values(
+        "sure_saniye",
+        ascending=False
+    ).reset_index(drop=True)
+
+    sureler["sure_dakika"] = (
+        sureler["sure_saniye"] / 60
+    ).round(2)
+
+    return sureler
