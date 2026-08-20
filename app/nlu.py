@@ -1,5 +1,5 @@
 import re
-
+from datetime import datetime, timedelta
 
 def sorgu_turu_bul(metin):
     """
@@ -110,13 +110,14 @@ def sorguyu_analiz_et(metin):
     yapılandırılmış bir sözlüğe dönüştürür.
     """
 
+    tarih = tarih_araligi_bul(metin)
+
     return {
         "intent": sorgu_turu_bul(metin),
-        "personel": personel_adi_bul(metin)
+        "personel": personel_adi_bul(metin),
+        "baslangic": tarih[0] if tarih else None,
+        "bitis": tarih[1] if tarih else None
     }
-
-from datetime import datetime, timedelta
-import re
 
 
 def tarih_araligi_bul(metin):
@@ -193,10 +194,3 @@ def tarih_araligi_bul(metin):
         return baslangic, bitis
 
     return None
-
-
-print(
-    tarih_araligi_bul(
-        "Yücel Durmuş 31 Temmuz'da hangi lokasyonlarda bulundu?"
-    )
-)
