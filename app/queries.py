@@ -74,3 +74,83 @@ def personel_hareketlerini_bul(
         baslangic,
         bitis
     )
+
+from app.parquet import personel_lokasyon_sureleri
+
+
+def personel_lokasyon_sorgusu(
+    ad,
+    soyad,
+    baslangic,
+    bitis
+):
+    """
+    Personel adı, soyadı ve tarih aralığı verilince
+    personelin lokasyonlarda geçirdiği süreleri getirir.
+    """
+
+    personel_id = personel_id_bul(ad, soyad)
+
+    if personel_id is None:
+        return None
+
+    return personel_lokasyon_sureleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+def sorgu_calistir(metin):
+    """
+    Doğal dildeki sorguyu analiz eder ve
+    uygun backend fonksiyonunu çalıştırır.
+    """
+
+    analiz = sorguyu_analiz_et(metin)
+
+    intent = analiz["intent"]
+    personel = analiz["personel"]
+    baslangic = analiz["baslangic"]
+    bitis = analiz["bitis"]
+
+    if personel is None:
+        return {
+            "hata": "Personel adı ve soyadı anlaşılamadı."
+        }
+
+    if baslangic is None or bitis is None:
+        return {
+            "hata": "Sorguda tarih bilgisi bulunamadı."
+        }
+
+    if intent == "lokasyon_suresi":
+        sonuc = personel_lokasyon_sorgusu(
+            personel["ad"],
+            personel["soyad"],
+            baslangic,
+            bitis
+        )
+
+        if sonuc is None:
+            return {
+                "hata": "Personel bulunamadı."
+            }
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": sonuc
+        }
+
+    return {
+        "hata": f"Desteklenmeyen sorgu türü: {intent}"
+    }
+
+from app.nlu import sorguyu_analiz_et
+
+
+sorgu = "Yücel Durmuş 31 Temmuz'da hangi lokasyonlarda bulundu?"
+
+sonuc = sorgu_calistir(sorgu)
+
+print(sonuc)
