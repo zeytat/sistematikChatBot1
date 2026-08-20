@@ -55,3 +55,51 @@ def sorgu_turu_bul(metin):
         return "konum"
 
     return "bilinmeyen"
+
+def personel_adi_bul(metin):
+    """
+    Metin içerisinden personelin ad ve soyadını bulmaya çalışır.
+
+    Şimdilik iki kelimelik isimleri destekliyoruz.
+    """
+    
+    kelimeler = metin.strip().split()
+
+    # Sorgu ifadelerini temizle
+    gereksizler = {
+        "nerede",
+        "neredeydi",
+        "nerelerde",
+        "bulundu",
+        "hangi",
+        "lokasyonlarda",
+        "lokasyon",
+        "bölgede",
+        "bölgelerde",
+        "ilk",
+        "son",
+        "ne",
+        "zaman",
+        "görüldü",
+        "görülme",
+        "süre",
+        "kaldı",
+        "konumu"
+    }
+
+    temiz = [
+        kelime
+        for kelime in kelimeler
+        if kelime.lower() not in gereksizler
+    ]
+
+    if len(temiz) < 2:
+        return None
+
+    ad = temiz[0].upper()
+    soyad = temiz[1].upper()
+
+    return {
+        "ad": ad,
+        "soyad": soyad
+    }
