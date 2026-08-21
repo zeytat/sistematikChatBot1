@@ -9,5 +9,3 @@ sql_connection = pyodbc.connect(
     f"DATABASE={database};"
     "Trusted_Connection=yes;"
 )
-
-print("SQL bağlantısı başarılı!")

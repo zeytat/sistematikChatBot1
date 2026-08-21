@@ -1,5 +1,6 @@
 import pandas as pd
 
+from app.response import cevap_olustur
 from app.database import sql_connection
 
 
@@ -224,4 +225,4 @@ sorgu = "Yücel Durmuş 31 Temmuz saat 09:21'de neredeydi?"
 
 sonuc = sorgu_calistir(sorgu)
 
-print(sonuc)
+print(cevap_olustur(sonuc))
