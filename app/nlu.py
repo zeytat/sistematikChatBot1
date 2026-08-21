@@ -17,7 +17,8 @@ def sorgu_turu_bul(metin):
             "nerelerdeydi",
             "hangi bölgelerde bulundu",
             "ne kadar kaldı",
-            "ne kadar süre"
+            "ne kadar süre",
+            "nerelerde kaldı"
         ]
     ):
         return "lokasyon_suresi"
