@@ -47,7 +47,14 @@ def personel_id_bul(ad, soyad):
 
     return int(result.iloc[0]["Id"])
 
-from app.parquet import personel_hareketleri
+from app.parquet import (
+    personel_hareketleri,
+    personel_ilk_son_gorulme,
+    personel_lokasyonlari,
+    personel_lokasyon_ziyaretleri,
+    personel_lokasyon_sureleri,
+    personel_belirli_zamanda_konum
+)
 
 
 def personel_hareketlerini_bul(
@@ -123,6 +130,43 @@ def sorgu_calistir(metin):
             "hata": "Sorguda tarih bilgisi bulunamadı."
         }
 
+    if intent == "konum":
+
+        if analiz["saat"] is None:
+            return {
+                "hata": "Konum sorgusu için saat bilgisi gerekli."
+            }
+
+        saat, dakika = analiz["saat"]
+
+        tarih_saat = baslangic.replace(
+            hour=saat,
+            minute=dakika,
+            second=0,
+            microsecond=0
+        )
+
+        personel_id = personel_id_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        if personel_id is None:
+            return {
+                "hata": "Personel bulunamadı."
+            }
+
+        sonuc = personel_belirli_zamanda_konum(
+            personel_id,
+            tarih_saat
+        )
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": sonuc
+        }
+
     if intent in ["ilk_gorulme", "son_gorulme"]:
 
         hareketler = personel_hareketlerini_bul(
@@ -176,7 +220,7 @@ def sorgu_calistir(metin):
 from app.nlu import sorguyu_analiz_et
 
 
-sorgu = "Yücel Durmuş 31 Temmuz'da son ne zaman görüldü?"
+sorgu = "Yücel Durmuş 31 Temmuz saat 09:21'de neredeydi?"
 
 sonuc = sorgu_calistir(sorgu)
 

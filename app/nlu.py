@@ -111,12 +111,14 @@ def sorguyu_analiz_et(metin):
     """
 
     tarih = tarih_araligi_bul(metin)
+    saat = saat_bul(metin)
 
     return {
         "intent": sorgu_turu_bul(metin),
         "personel": personel_adi_bul(metin),
         "baslangic": tarih[0] if tarih else None,
-        "bitis": tarih[1] if tarih else None
+        "bitis": tarih[1] if tarih else None,
+        "saat": saat
     }
 
 
@@ -194,3 +196,29 @@ def tarih_araligi_bul(metin):
         return baslangic, bitis
 
     return None
+
+def saat_bul(metin):
+    """
+    Metinden saat bilgisini bulur.
+
+    Desteklenen örnekler:
+    - 09:21
+    - saat 09:21
+    - 9:21
+    """
+
+    eslesme = re.search(
+        r"(?:saat\s*)?(\d{1,2}):(\d{2})",
+        metin.lower()
+    )
+
+    if not eslesme:
+        return None
+
+    saat = int(eslesme.group(1))
+    dakika = int(eslesme.group(2))
+
+    if saat > 23 or dakika > 59:
+        return None
+
+    return saat, dakika
