@@ -18,6 +18,7 @@ def sorgu_turu_bul(metin):
             "hangi bölgelerde bulundu",
             "ne kadar kaldı",
             "ne kadar süre",
+            "nerelerde zaman geçirdi",
             "nerelerde kaldı"
         ]
     ):
