@@ -55,7 +55,10 @@ from app.parquet import (
     personel_lokasyonlari,
     personel_lokasyon_ziyaretleri,
     personel_lokasyon_sureleri,
-    personel_belirli_zamanda_konum
+    personel_belirli_zamanda_konum,
+    belirli_saatte_kimler,
+    belirli_lokasyonda_kimler,
+    lokasyonda_kimler
 )
 
 
@@ -122,16 +125,189 @@ def sorgu_calistir(metin):
     baslangic = analiz["baslangic"]
     bitis = analiz["bitis"]
 
-    if personel is None:
+    if intent == "personel_karsilastirma":
+
+        if analiz["personeller"] is None:
+            return {
+                "hata": "İki personel adı ve soyadı anlaşılamadı."
+            }
+
+        if baslangic is None or bitis is None:
+            return {
+                "hata": "Sorguda tarih bilgisi bulunamadı."
+            }
+
+        sonuclar = []
+
+        for kisi in analiz["personeller"]:
+
+            personel_id = personel_id_bul(
+                kisi["ad"],
+                kisi["soyad"]
+            )
+
+            if personel_id is None:
+                sonuclar.append({
+                    "personel": kisi,
+                    "hata": "Personel bulunamadı."
+                })
+                continue
+
+            hareketler = personel_hareketleri(
+                personel_id,
+                baslangic,
+                bitis
+            )
+
+            sonuclar.append({
+                "personel": kisi,
+                "personel_id": personel_id,
+                "kayit_sayisi": len(hareketler)
+            })
+
         return {
-            "hata": "Personel adı ve soyadı anlaşılamadı."
+            "intent": intent,
+            "sonuclar": sonuclar
         }
+    if intent == "personel_bilgisi":
+
+        personel_id = personel_id_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        if personel_id is None:
+            return {
+                "hata": "Personel bulunamadı veya birden fazla aktif personel eşleşti."
+            }
+
+        bilgi = personel_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": bilgi.iloc[0].to_dict()
+        }
+    if intent == "personel_bilgisi":
+
+        personel_id = personel_id_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        if personel_id is None:
+            return {
+                "hata": "Personel bulunamadı veya birden fazla aktif personel eşleşti."
+            }
+
+        bilgi = personel_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": bilgi.iloc[0].to_dict()
+        }
+    if intent == "saatte_kimler":
+
+        if baslangic is None or analiz["saat"] is None:
+            return {
+                "hata": "Tarih ve saat bilgisi gerekli."
+            }
+
+        saat, dakika = analiz["saat"]
+
+        tarih_saat = baslangic.replace(
+            hour=saat,
+            minute=dakika,
+            second=0,
+            microsecond=0
+        )
+
+        sonuc = belirli_saatte_kimler(
+            tarih_saat
+        )
+
+        return {
+            "intent": intent,
+            "zaman": tarih_saat,
+            "sonuc": sonuc
+        }
+    
+    if personel is None and intent not in [
+    "saatte_kimler",
+    "lokasyonda_kimler"
+]:
+        return {
+        "hata": "Personel adı ve soyadı anlaşılamadı."
+    }
 
     if baslangic is None or bitis is None:
         return {
             "hata": "Sorguda tarih bilgisi bulunamadı."
         }
+    if intent == "lokasyonda_kimler":
 
+        if analiz["saat"] is None:
+            return {
+                "hata": "Lokasyon sorgusu için saat bilgisi gerekli."
+            }
+
+        if analiz.get("lokasyon") is None:
+            return {
+                "hata": "Lokasyon anlaşılamadı."
+            }
+
+        saat, dakika = analiz["saat"]
+
+        tarih_saat = baslangic.replace(
+            hour=saat,
+            minute=dakika,
+            second=0,
+            microsecond=0
+        )
+
+        lokasyon_adi = analiz["lokasyon"]
+
+        query = """
+            SELECT Id
+            FROM Location
+            WHERE Name = ?
+              AND IsActive = 1
+        """
+
+        location_result = pd.read_sql(
+            query,
+            sql_connection,
+            params=[lokasyon_adi]
+        )
+
+        if location_result.empty:
+            return {
+                "hata": f"{lokasyon_adi} lokasyonu bulunamadı."
+            }
+
+        location_id = int(
+            location_result.iloc[0]["Id"]
+        )
+
+        sonuc = lokasyonda_kimler(
+            tarih_saat,
+            location_id
+        )
+
+        return {
+            "intent": intent,
+            "zaman": tarih_saat,
+            "lokasyon": lokasyon_adi,
+            "sonuc": sonuc
+        }
+    
     if intent == "konum":
 
         if analiz["saat"] is None:
@@ -169,6 +345,26 @@ def sorgu_calistir(metin):
             "sonuc": sonuc
         }
 
+    if intent == "hareketler":
+
+        hareketler = personel_hareketlerini_bul(
+            personel["ad"],
+            personel["soyad"],
+            baslangic,
+            bitis
+        )
+
+        if hareketler is None or hareketler.empty:
+            return {
+                "hata": "Bu tarih aralığında personel hareketi bulunamadı."
+            }
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": hareketler
+        }
+    
     if intent in ["ilk_gorulme", "son_gorulme"]:
 
         hareketler = personel_hareketlerini_bul(
@@ -194,6 +390,103 @@ def sorgu_calistir(metin):
             "zaman": kayit["DeviceTime"]
         }
 
+    if intent == "lokasyon_ziyaret_sayisi":
+
+        ziyaretler = personel_lokasyon_ziyaretleri(
+            personel_id_bul(
+                personel["ad"],
+                personel["soyad"]
+            ),
+            baslangic,
+            bitis
+        )
+
+        if ziyaretler is None or ziyaretler.empty:
+            return {
+                "hata": "Bu tarih aralığında lokasyon ziyareti bulunamadı."
+            }
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": ziyaretler
+        }
+
+    if intent == "en_uzun_lokasyon":
+
+        personel_id = personel_id_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        if personel_id is None:
+            return {
+                "hata": "Personel bulunamadı."
+            }
+
+        sureler = personel_lokasyon_sureleri(
+            personel_id,
+            baslangic,
+            bitis
+        )
+
+        if sureler is None or sureler.empty:
+            return {
+                "hata": "Bu tarih aralığında lokasyon kaydı bulunamadı."
+            }
+
+        en_uzun = sureler.iloc[0]
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": en_uzun
+        }
+
+    if intent == "en_cok_fiziksel_bolge":
+
+        personel_id = personel_id_bul(
+            personel["ad"],
+            personel["soyad"]
+        )
+
+        if personel_id is None:
+            return {
+                "hata": "Personel bulunamadı."
+            }
+
+        hareketler = personel_hareketleri(
+            personel_id,
+            baslangic,
+            bitis
+        )
+
+        if hareketler is None or hareketler.empty:
+            return {
+                "hata": "Bu tarih aralığında hareket kaydı bulunamadı."
+            }
+
+        bolgeler = (
+            hareketler
+            .dropna(subset=["PhysicalZoneName"])
+            ["PhysicalZoneName"]
+            .value_counts()
+        )
+
+        if bolgeler.empty:
+            return {
+                "hata": "Fiziksel bölge bilgisi bulunamadı."
+            }
+
+        return {
+            "intent": intent,
+            "personel": personel,
+            "sonuc": {
+                "fiziksel_bolge": bolgeler.index[0],
+                "kayit_sayisi": int(bolgeler.iloc[0])
+            }
+        }
+    
     if intent == "lokasyon_suresi":
 
         sonuc = personel_lokasyon_sorgusu(

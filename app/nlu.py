@@ -1,6 +1,5 @@
 import re
 from datetime import datetime, timedelta
-
 def sorgu_turu_bul(metin):
     """
     Kullanıcının doğal dildeki sorusunun temel türünü belirler.
@@ -8,7 +7,30 @@ def sorgu_turu_bul(metin):
 
     metin = metin.lower()
 
-    # Önce daha spesifik sorguları kontrol ediyoruz.
+    # 16 - Belirli lokasyonda kimler vardı?
+    if any(
+        ifade in metin
+        for ifade in [
+            "lokasyonunda kimler vardı",
+            "lokasyonda kimler vardı",
+            "bölgede kimler vardı",
+            "bölgede kim vardı"
+        ]
+    ):
+        return "lokasyonda_kimler"
+
+    # 15 - Belirli saatte kimler vardı?
+    if any(
+        ifade in metin
+        for ifade in [
+            "saatte kimler vardı",
+            "saatinde kimler vardı",
+            "o saatte kimler vardı"
+        ]
+    ):
+        return "saatte_kimler"
+
+    # Lokasyon süresi
     if any(
         ifade in metin
         for ifade in [
@@ -24,6 +46,7 @@ def sorgu_turu_bul(metin):
     ):
         return "lokasyon_suresi"
 
+    # İlk görülme
     if any(
         ifade in metin
         for ifade in [
@@ -34,6 +57,7 @@ def sorgu_turu_bul(metin):
     ):
         return "ilk_gorulme"
 
+    # Son görülme
     if any(
         ifade in metin
         for ifade in [
@@ -44,6 +68,7 @@ def sorgu_turu_bul(metin):
     ):
         return "son_gorulme"
 
+    # Genel konum
     if any(
         ifade in metin
         for ifade in [
@@ -67,17 +92,20 @@ def personel_adi_bul(metin):
     
     kelimeler = metin.strip().split()
 
-    # Sorgu ifadelerini temizle
+        # Sorgu ifadelerini temizle
     gereksizler = {
         "nerede",
         "neredeydi",
         "nerelerde",
         "bulundu",
+        "bulunuyordu",
         "hangi",
         "lokasyonlarda",
+        "lokasyonda",
         "lokasyon",
         "bölgede",
         "bölgelerde",
+        "bölge",
         "ilk",
         "son",
         "ne",
@@ -86,8 +114,41 @@ def personel_adi_bul(metin):
         "görülme",
         "süre",
         "kaldı",
-        "konumu"
-    }
+        "konumu",
+        "hareketleri",
+        "hareket",
+        "gün",
+        "günlük",
+        "içindeki",
+        "boyunca",
+        "kaç",
+        "kez",
+        "kere",
+        "defa",
+        "ziyaret",
+        "sayısı",
+        "en",
+        "uzun",
+        "fazla",
+        "çok",
+        "kaldığı",
+        "bulunduğu",
+        "fiziksel",
+        "kimler",
+        "kim",
+        "vardı",
+        "karşılaştır",
+        "karşılaştırması",
+        "karşılaştırma",
+        "kıyasla",
+        "personel",
+        "bilgileri",
+        "bilgisi",
+        "hakkında",
+        "sicil",
+        "numarası",
+        "kart",
+}
 
     temiz = [
         kelime
@@ -106,17 +167,78 @@ def personel_adi_bul(metin):
         "soyad": soyad
     }
 
+def personelleri_bul(metin):
+    """
+    Metinden iki personelin ad ve soyadını bulur.
+    """
+
+    kelimeler = metin.strip().split()
+
+    gereksizler = {
+        "ile",
+        "ve",
+        "karşılaştır",
+        "karşılaştırması",
+        "karşılaştırma",
+        "arasında"
+    }
+
+    temiz = [
+        kelime
+        for kelime in kelimeler
+        if kelime.lower() not in gereksizler
+    ]
+
+    if len(temiz) < 4:
+        return None
+
+    return [
+        {
+            "ad": temiz[0].upper(),
+            "soyad": temiz[1].upper()
+        },
+        {
+            "ad": temiz[2].upper(),
+            "soyad": temiz[3].upper()
+        }
+    ]
+
 def sorguyu_analiz_et(metin):
-    """
-    Doğal dildeki kullanıcı sorgusunu
-    yapılandırılmış bir sözlüğe dönüştürür.
-    """
 
     tarih = tarih_araligi_bul(metin)
     saat = saat_bul(metin)
+    intent = sorgu_turu_bul(metin)
+
+    if intent == "lokasyonda_kimler":
+        return {
+            "intent": intent,
+            "personel": None,
+            "baslangic": tarih[0] if tarih else None,
+            "bitis": tarih[1] if tarih else None,
+            "saat": saat,
+            "lokasyon": lokasyon_bul(metin)
+        }
 
     return {
-        "intent": sorgu_turu_bul(metin),
+        "intent": intent,
+        "personel": personel_adi_bul(metin),
+        "baslangic": tarih[0] if tarih else None,
+        "bitis": tarih[1] if tarih else None,
+        "saat": saat
+    }
+
+
+    if intent == "saatte_kimler":
+        return {
+            "intent": intent,
+            "personel": None,
+            "baslangic": tarih[0] if tarih else None,
+            "bitis": tarih[1] if tarih else None,
+            "saat": saat
+        }
+
+    return {
+        "intent": intent,
         "personel": personel_adi_bul(metin),
         "baslangic": tarih[0] if tarih else None,
         "bitis": tarih[1] if tarih else None,
@@ -224,3 +346,20 @@ def saat_bul(metin):
         return None
 
     return saat, dakika
+
+def lokasyon_bul(metin):
+    """
+    Sorgudaki lokasyon adını bulur.
+    """
+
+    lokasyonlar = [
+        "ZİNCİR"
+    ]
+
+    metin_upper = metin.upper()
+
+    for lokasyon in lokasyonlar:
+        if lokasyon in metin_upper:
+            return lokasyon
+
+    return None

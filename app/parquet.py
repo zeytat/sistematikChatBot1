@@ -227,6 +227,231 @@ def personel_lokasyon_sureleri(personel_id, baslangic, bitis):
 
     return sureler
 
+def personel_lokasyon_sure(
+    personel_id,
+    lokasyon,
+    baslangic,
+    bitis
+):
+    """
+    Personelin belirli bir lokasyonda toplam
+    ne kadar süre kaldığını döndürür.
+    """
+
+    sureler = personel_lokasyon_sureleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if sureler.empty:
+        return None
+
+    sonuc = sureler[
+        sureler["lokasyon"].str.upper() == lokasyon.upper()
+    ]
+
+    if sonuc.empty:
+        return None
+
+    return sonuc.iloc[0]
+
+
+def personel_lokasyon_ziyaret_sayisi(
+    personel_id,
+    baslangic,
+    bitis
+):
+    """
+    Personelin her lokasyonu kaç kez ziyaret ettiğini döndürür.
+    """
+
+    ziyaretler = personel_lokasyon_ziyaretleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if ziyaretler.empty:
+        return pd.DataFrame()
+
+    sonuc = (
+        ziyaretler
+        .groupby(
+            ["location_id", "physical_zone_id",
+             "lokasyon", "fiziksel_bolge"],
+            dropna=False
+        )
+        .size()
+        .reset_index(name="ziyaret_sayisi")
+    )
+
+    return sonuc.sort_values(
+        "ziyaret_sayisi",
+        ascending=False
+    ).reset_index(drop=True)
+
+
+def personel_en_uzun_lokasyon(
+    personel_id,
+    baslangic,
+    bitis
+):
+    """
+    Personelin en uzun süre kaldığı lokasyonu döndürür.
+    """
+
+    sureler = personel_lokasyon_sureleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if sureler.empty:
+        return None
+
+    return sureler.iloc[0]
+
+
+def personel_en_cok_fiziksel_bolge(
+    personel_id,
+    baslangic,
+    bitis
+):
+    """
+    Personelin en fazla süre bulunduğu fiziksel bölgeyi döndürür.
+    """
+
+    ziyaretler = personel_lokasyon_ziyaretleri(
+        personel_id,
+        baslangic,
+        bitis
+    )
+
+    if ziyaretler.empty:
+        return None
+
+    sonuc = (
+        ziyaretler
+        .groupby(
+            ["physical_zone_id", "fiziksel_bolge"],
+            dropna=False
+        )["sure_saniye"]
+        .sum()
+        .reset_index()
+        .sort_values(
+            "sure_saniye",
+            ascending=False
+        )
+        .reset_index(drop=True)
+    )
+
+    return sonuc.iloc[0]
+
+def iki_personel_karsilastir(
+    personel_id_1,
+    personel_id_2,
+    baslangic,
+    bitis
+):
+    sure_1 = personel_lokasyon_sureleri(
+        personel_id_1,
+        baslangic,
+        bitis
+    )
+
+    sure_2 = personel_lokasyon_sureleri(
+        personel_id_2,
+        baslangic,
+        bitis
+    )
+
+    return {
+        "personel_1": sure_1,
+        "personel_2": sure_2
+    }
+
+def saatte_kimler_vardi(
+    tarih_saat,
+    tolerans_dakika=5
+):
+    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
+    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+
+    df = parquet_aralik_oku(
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.dropna(
+        subset=["PersonnelId"]
+    )
+
+    df["zaman_farki"] = (
+        df["DeviceTime"] - tarih_saat
+    ).abs()
+
+    # Her personelin en yakın kaydı
+    sonuc = (
+        df.sort_values("zaman_farki")
+        .groupby("PersonnelId", as_index=False)
+        .first()
+    )
+
+    return sonuc[
+        [
+            "PersonnelId",
+            "PersonnelName",
+            "PersonnelSurname",
+            "DeviceTime",
+            "LocationName",
+            "PhysicalZoneName"
+        ]
+    ]
+
+def lokasyonda_kimler_vardi(
+    lokasyon,
+    baslangic,
+    bitis
+):
+    df = parquet_aralik_oku(
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df[
+        df["LocationName"]
+        .fillna("")
+        .str.upper()
+        == lokasyon.upper()
+    ]
+
+    if df.empty:
+        return pd.DataFrame()
+
+    sonuc = (
+        df[
+            [
+                "PersonnelId",
+                "PersonnelName",
+                "PersonnelSurname",
+                "DeviceTime",
+                "LocationName",
+                "PhysicalZoneName"
+            ]
+        ]
+        .drop_duplicates(subset=["PersonnelId"])
+        .reset_index(drop=True)
+    )
+
+    return sonuc
+
 def personel_belirli_zamanda_konum(
     personel_id,
     tarih_saat,
@@ -280,3 +505,171 @@ def personel_belirli_zamanda_konum(
             sonuc["zaman_farki"].total_seconds()
         )
     }
+
+def belirli_saatte_kimler(
+    tarih_saat,
+    tolerans_dakika=5
+):
+    """
+    Belirli bir saat civarında görülen tüm personelleri getirir.
+    """
+
+    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
+    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+
+    df = parquet_aralik_oku(
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.dropna(
+        subset=["PersonnelId"]
+    )
+
+    df["zaman_farki"] = (
+        (df["DeviceTime"] - tarih_saat)
+        .abs()
+    )
+
+    # Her personelin hedef saate en yakın kaydını al
+    sonuc = (
+        df.sort_values("zaman_farki")
+        .groupby("PersonnelId", as_index=False)
+        .first()
+    )
+
+    return sonuc[
+        [
+            "PersonnelId",
+            "PersonnelName",
+            "PersonnelSurname",
+            "DeviceTime",
+            "LocationName",
+            "PhysicalZoneName",
+            "zaman_farki"
+        ]
+    ].sort_values("zaman_farki").reset_index(drop=True)
+
+def belirli_lokasyonda_kimler(
+    tarih_saat,
+    location_id,
+    tolerans_dakika=5
+):
+    """
+    Belirli tarih-saat civarında belirli lokasyonda
+    görülen personelleri getirir.
+    """
+
+    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
+    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+
+    df = parquet_aralik_oku(
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df[
+        df["LocationId"] == location_id
+    ].copy()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.dropna(
+        subset=["PersonnelId"]
+    )
+
+    df["zaman_farki"] = (
+        (df["DeviceTime"] - tarih_saat)
+        .abs()
+    )
+
+    sonuc = (
+        df.sort_values("zaman_farki")
+        .groupby("PersonnelId", as_index=False)
+        .first()
+    )
+
+    return sonuc[
+        [
+            "PersonnelId",
+            "PersonnelName",
+            "PersonnelSurname",
+            "DeviceTime",
+            "LocationName",
+            "PhysicalZoneName",
+            "zaman_farki"
+        ]
+    ].sort_values(
+        "zaman_farki"
+    ).reset_index(drop=True)
+
+def lokasyonda_kimler(
+    tarih_saat,
+    location_id,
+    tolerans_dakika=5
+):
+    """
+    Belirli tarih-saat civarında belirli lokasyonda
+    bulunan personelleri getirir.
+    """
+
+    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
+    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+
+    df = parquet_aralik_oku(
+        baslangic,
+        bitis
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df["LocationId"] = pd.to_numeric(
+        df["LocationId"],
+        errors="coerce"
+    )
+
+    df = df[
+        df["LocationId"] == location_id
+    ].copy()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df["DeviceTime"] = pd.to_datetime(
+        df["DeviceTime"]
+    )
+
+    df["zaman_farki"] = (
+        df["DeviceTime"] - tarih_saat
+    ).abs()
+
+    # Aynı kişiye ait birden fazla kayıttan
+    # istenen saate en yakın olanı al
+    sonuc = (
+        df.sort_values("zaman_farki")
+        .drop_duplicates(
+            subset=["PersonnelId"]
+        )
+    )
+
+    return sonuc[
+        [
+            "PersonnelId",
+            "PersonnelName",
+            "PersonnelSurname",
+            "DeviceTime",
+            "LocationName",
+            "PhysicalZoneName",
+            "zaman_farki"
+        ]
+    ].sort_values(
+        "zaman_farki"
+    ).reset_index(drop=True)
