@@ -1,5 +1,6 @@
 import pandas as pd
 
+from app.nlu import sorguyu_analiz_et
 from app.response import cevap_olustur
 from app.database import sql_connection
 
@@ -216,13 +217,3 @@ def sorgu_calistir(metin):
     return {
         "hata": f"Desteklenmeyen sorgu türü: {intent}"
     }
-
-
-from app.nlu import sorguyu_analiz_et
-
-
-sorgu = "Yücel Durmuş 31 Temmuz'da ne kadar süre kaldı?"
-
-sonuc = sorgu_calistir(sorgu)
-
-print(cevap_olustur(sonuc))
