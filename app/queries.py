@@ -221,7 +221,7 @@ def sorgu_calistir(metin):
 from app.nlu import sorguyu_analiz_et
 
 
-sorgu = "Yücel Durmuş 31 Temmuz saat 09:21'de neredeydi?"
+sorgu = "Yücel Durmuş 31 Temmuz'da hangi lokasyonlarda bulundu?"
 
 sonuc = sorgu_calistir(sorgu)
 
