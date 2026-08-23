@@ -2,35 +2,133 @@ import re
 from datetime import datetime, timedelta
 def sorgu_turu_bul(metin):
     """
-    Kullanıcının doğal dildeki sorusunun temel türünü belirler.
+    Kullanıcının doğal dildeki sorusunun
+    sorgu türünü belirler.
     """
 
     metin = metin.lower()
 
-    # 16 - Belirli lokasyonda kimler vardı?
+    # 1. Personel karşılaştırma
     if any(
         ifade in metin
         for ifade in [
-            "lokasyonunda kimler vardı",
-            "lokasyonda kimler vardı",
-            "bölgede kimler vardı",
-            "bölgede kim vardı"
+            "karşılaştır",
+            "karsilastir",
+            "karşılaştırma",
+            "karsilastirma",
+            "kıyasla",
+            "kiyasla"
         ]
     ):
-        return "lokasyonda_kimler"
+        return "personel_karsilastirma"
 
-    # 15 - Belirli saatte kimler vardı?
+    # 2. Personel bilgisi
     if any(
         ifade in metin
         for ifade in [
-            "saatte kimler vardı",
-            "saatinde kimler vardı",
-            "o saatte kimler vardı"
+            "personel bilgisi",
+            "personel bilgileri",
+            "sicil numarası",
+            "sicil numarasi",
+            "kart numarası",
+            "kart numarasi"
+        ]
+    ):
+        return "personel_bilgisi"
+
+    # 3. Belirli saatte kimler vardı?
+    if any(
+        ifade in metin
+        for ifade in [
+            "saatte kimler",
+            "saatinde kimler",
+            "o saatte kimler",
+            "kimler vardı",
+            "kimler vardi"
         ]
     ):
         return "saatte_kimler"
 
-    # Lokasyon süresi
+    # 4. Belirli lokasyonda kimler vardı?
+    if any(
+        ifade in metin
+        for ifade in [
+            "lokasyonunda kimler",
+            "lokasyonda kimler",
+            "bölgede kimler",
+            "bolgede kimler"
+        ]
+    ):
+        return "lokasyonda_kimler"
+
+    # 5. Belirli lokasyonda ne kadar kaldı?
+    if any(
+        ifade in metin
+        for ifade in [
+            "lokasyonda ne kadar kaldı",
+            "lokasyonunda ne kadar kaldı",
+            "lokasyonda ne kadar süre",
+            "lokasyonunda ne kadar süre"
+        ]
+    ):
+        return "lokasyon_suresi_belirli"
+
+    # 6. En çok bulunduğu fiziksel bölge
+    if any(
+        ifade in metin
+        for ifade in [
+            "en çok bulunduğu fiziksel bölge",
+            "en cok bulundugu fiziksel bolge",
+            "en çok bulunduğu bölge",
+            "en cok bulundugu bolge",
+            "en fazla bulunduğu fiziksel bölge",
+            "en fazla bulundugu fiziksel bolge"
+        ]
+    ):
+        return "en_cok_fiziksel_bolge"
+
+    # 7. En uzun kaldığı lokasyon
+    if any(
+        ifade in metin
+        for ifade in [
+            "en uzun kaldığı lokasyon",
+            "en uzun kaldigi lokasyon",
+            "en uzun kaldığı yer",
+            "en uzun kaldigi yer"
+        ]
+    ):
+        return "en_uzun_lokasyon"
+
+    # 8. Lokasyon ziyaret sayısı
+    if any(
+        ifade in metin
+        for ifade in [
+            "lokasyon ziyaret sayısı",
+            "lokasyon ziyaret sayisi",
+            "ziyaret sayısı",
+            "ziyaret sayisi",
+            "kaç kez ziyaret",
+            "kac kez ziyaret"
+        ]
+    ):
+        return "lokasyon_ziyaret_sayisi"
+
+    # 9. Gün içindeki hareketler
+    if any(
+        ifade in metin
+        for ifade in [
+            "gün içindeki hareketleri",
+            "gun icindeki hareketleri",
+            "gün içindeki hareketleri",
+            "hareketleri",
+            "hareket kayıtları",
+            "hareket kayitlari",
+            "gün içindeki hareketleri"
+        ]
+    ):
+        return "hareketler"
+
+    # 10. Lokasyonlarda geçirdiği süre
     if any(
         ifade in metin
         for ifade in [
@@ -46,7 +144,7 @@ def sorgu_turu_bul(metin):
     ):
         return "lokasyon_suresi"
 
-    # İlk görülme
+    # 11. İlk görülme
     if any(
         ifade in metin
         for ifade in [
@@ -57,7 +155,7 @@ def sorgu_turu_bul(metin):
     ):
         return "ilk_gorulme"
 
-    # Son görülme
+    # 12. Son görülme
     if any(
         ifade in metin
         for ifade in [
@@ -68,7 +166,7 @@ def sorgu_turu_bul(metin):
     ):
         return "son_gorulme"
 
-    # Genel konum
+    # 13. Belirli konum
     if any(
         ifade in metin
         for ifade in [
@@ -86,74 +184,87 @@ def sorgu_turu_bul(metin):
 def personel_adi_bul(metin):
     """
     Metin içerisinden personelin ad ve soyadını bulmaya çalışır.
-
-    Şimdilik iki kelimelik isimleri destekliyoruz.
+    Personel gerektirmeyen sorgularda None döndürür.
     """
-    
+
+    metin_kucuk = metin.lower()
+
+    # Bu sorgular personel adı gerektirmez
+    if any(
+        ifade in metin_kucuk
+        for ifade in [
+            "kimler vardı",
+            "kimler vardi",
+            "saatte kimler",
+            "saatinde kimler",
+            "o saatte kimler",
+            "lokasyonunda kimler",
+            "lokasyonda kimler",
+            "bölgede kimler",
+            "bolgede kimler"
+        ]
+    ):
+        return None
+
     kelimeler = metin.strip().split()
 
-        # Sorgu ifadelerini temizle
     gereksizler = {
         "nerede",
         "neredeydi",
         "nerelerde",
         "bulundu",
-        "bulunuyordu",
         "hangi",
         "lokasyonlarda",
-        "lokasyonda",
         "lokasyon",
+        "lokasyonunda",
+        "lokasyonda",
         "bölgede",
         "bölgelerde",
-        "bölge",
+        "bolgede",
+        "bolgelerde",
         "ilk",
         "son",
         "ne",
         "zaman",
         "görüldü",
+        "görüldü",
         "görülme",
         "süre",
         "kaldı",
         "konumu",
-        "hareketleri",
-        "hareket",
         "gün",
-        "günlük",
+        "gun",
         "içindeki",
-        "boyunca",
-        "kaç",
-        "kez",
-        "kere",
-        "defa",
+        "icindeki",
+        "hareketleri",
         "ziyaret",
         "sayısı",
+        "sayisi",
         "en",
         "uzun",
-        "fazla",
         "çok",
-        "kaldığı",
+        "cok",
         "bulunduğu",
+        "bulundugu",
         "fiziksel",
-        "kimler",
-        "kim",
-        "vardı",
-        "karşılaştır",
-        "karşılaştırması",
-        "karşılaştırma",
-        "kıyasla",
+        "bölge",
+        "bolge",
+        "hangisi",
+        "hangisi",
         "personel",
-        "bilgileri",
         "bilgisi",
-        "hakkında",
-        "sicil",
-        "numarası",
-        "kart",
-}
+        "bilgileri",
+        "ve",
+        "karşılaştır",
+        "karsilastir",
+        "karşılaştırma",
+        "karsilastirma"
+    }
 
     temiz = [
         kelime
         for kelime in kelimeler
-        if kelime.lower() not in gereksizler
+        if kelime.lower().strip(".,?!") not in gereksizler
     ]
 
     if len(temiz) < 2:

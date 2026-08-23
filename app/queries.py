@@ -215,9 +215,9 @@ def sorgu_calistir(metin):
         }
     if intent == "saatte_kimler":
 
-        if baslangic is None or analiz["saat"] is None:
+        if analiz["saat"] is None:
             return {
-                "hata": "Tarih ve saat bilgisi gerekli."
+                "hata": "Saat bilgisi bulunamadı."
             }
 
         saat, dakika = analiz["saat"]
@@ -233,24 +233,89 @@ def sorgu_calistir(metin):
             tarih_saat
         )
 
+        if sonuc is None or sonuc.empty:
+            return {
+                "intent": intent,
+                "zaman": tarih_saat,
+                "sonuc": pd.DataFrame()
+            }
+
+        # Aynı personelin birden fazla kaydı varsa
+        # sadece en yakın kaydı tut.
+        sonuc = sonuc.copy()
+
+        sonuc["PersonnelId"] = pd.to_numeric(
+            sonuc["PersonnelId"],
+            errors="coerce"
+        )
+
+        if "zaman_farki" in sonuc.columns:
+            sonuc = (
+                sonuc
+                .sort_values("zaman_farki")
+                .drop_duplicates(
+                    subset=["PersonnelId"],
+                    keep="first"
+                )
+                .reset_index(drop=True)
+            )
+        else:
+            sonuc = (
+                sonuc
+                .drop_duplicates(
+                    subset=["PersonnelId"],
+                    keep="first"
+                )
+                .reset_index(drop=True)
+            )
+
         return {
             "intent": intent,
             "zaman": tarih_saat,
             "sonuc": sonuc
         }
     
-    if personel is None and intent not in [
-    "saatte_kimler",
-    "lokasyonda_kimler"
-]:
-        return {
-        "hata": "Personel adı ve soyadı anlaşılamadı."
-    }
+    # Personel gerektiren sorgular
+    personel_gereken_intentler = [
+        "konum",
+        "ilk_gorulme",
+        "son_gorulme",
+        "lokasyon_suresi",
+        "lokasyon_suresi_belirli",
+        "hareketler",
+        "lokasyon_ziyaret_sayisi",
+        "en_uzun_lokasyon",
+        "en_cok_fiziksel_bolge",
+        "personel_bilgisi"
+    ]
 
-    if baslangic is None or bitis is None:
+    if intent in personel_gereken_intentler and personel is None:
         return {
-            "hata": "Sorguda tarih bilgisi bulunamadı."
+            "hata": "Personel adı ve soyadı anlaşılamadı."
         }
+
+    # Tarih gerektiren sorgular
+    tarih_gereken_intentler = [
+        "konum",
+        "ilk_gorulme",
+        "son_gorulme",
+        "lokasyon_suresi",
+        "lokasyon_suresi_belirli",
+        "hareketler",
+        "lokasyon_ziyaret_sayisi",
+        "en_uzun_lokasyon",
+        "en_cok_fiziksel_bolge",
+        "personel_karsilastirma",
+        "saatte_kimler",
+        "lokasyonda_kimler"
+    ]
+
+    if intent in tarih_gereken_intentler:
+        if baslangic is None or bitis is None:
+            return {
+                "hata": "Sorguda tarih bilgisi bulunamadı."
+            }
+            
     if intent == "lokasyonda_kimler":
 
         if analiz["saat"] is None:

@@ -508,14 +508,19 @@ def personel_belirli_zamanda_konum(
 
 def belirli_saatte_kimler(
     tarih_saat,
-    tolerans_dakika=5
+    tolerans_dakika=0
 ):
     """
-    Belirli bir saat civarında görülen tüm personelleri getirir.
+    Belirli dakikada görülen benzersiz personelleri getirir.
+    Her personelin o dakikadaki en yakın kaydı alınır.
     """
 
-    baslangic = tarih_saat - timedelta(minutes=tolerans_dakika)
-    bitis = tarih_saat + timedelta(minutes=tolerans_dakika)
+    baslangic = tarih_saat.replace(
+        second=0,
+        microsecond=0
+    )
+
+    bitis = baslangic + timedelta(minutes=1)
 
     df = parquet_aralik_oku(
         baslangic,
@@ -527,6 +532,14 @@ def belirli_saatte_kimler(
 
     df = df.dropna(
         subset=["PersonnelId"]
+    ).copy()
+    df = df.dropna(
+    subset=["LocationName", "PhysicalZoneName"],
+    how="all"
+    )
+
+    df["DeviceTime"] = pd.to_datetime(
+        df["DeviceTime"]
     )
 
     df["zaman_farki"] = (
@@ -534,11 +547,14 @@ def belirli_saatte_kimler(
         .abs()
     )
 
-    # Her personelin hedef saate en yakın kaydını al
+    # Aynı personelin birden fazla kaydı varsa
+    # hedef saate en yakın olan kaydı tut.
     sonuc = (
         df.sort_values("zaman_farki")
-        .groupby("PersonnelId", as_index=False)
-        .first()
+        .drop_duplicates(
+            subset=["PersonnelId"],
+            keep="first"
+        )
     )
 
     return sonuc[
@@ -551,7 +567,9 @@ def belirli_saatte_kimler(
             "PhysicalZoneName",
             "zaman_farki"
         ]
-    ].sort_values("zaman_farki").reset_index(drop=True)
+    ].sort_values(
+        "zaman_farki"
+    ).reset_index(drop=True)
 
 def belirli_lokasyonda_kimler(
     tarih_saat,
@@ -584,6 +602,7 @@ def belirli_lokasyonda_kimler(
     df = df.dropna(
         subset=["PersonnelId"]
     )
+    
 
     df["zaman_farki"] = (
         (df["DeviceTime"] - tarih_saat)
