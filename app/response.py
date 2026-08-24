@@ -97,46 +97,124 @@ def cevap_olustur(sonuc):
         return cevap.strip()
 
     # --------------------------------------------------
-    # GÜN İÇİNDEKİ HAREKETLER
-    # --------------------------------------------------
+# GÜN İÇİNDEKİ HAREKETLER
+# --------------------------------------------------
 
     if intent == "hareketler":
 
         tablo = sonuc["sonuc"]
 
-        if tablo.empty:
-            return (
-                f"{ad_soyad} için belirtilen tarih aralığında "
-                f"hareket kaydı bulunamadı."
-            )
-
-        cevap = (
-            f"{ad_soyad} için "
-            f"{tablo['DeviceTime'].min().strftime('%d.%m.%Y')} "
-            f"tarihindeki hareket kayıtları:\n"
+    if tablo.empty:
+        return (
+            f"{ad_soyad} için belirtilen tarih aralığında "
+            f"hareket kaydı bulunamadı."
         )
 
-        for _, row in tablo.iterrows():
+    tablo = tablo.sort_values("DeviceTime").copy()
 
-            zaman = row["DeviceTime"]
+    # --------------------------------------------------
+    # Eksik lokasyonları temizle
+    # --------------------------------------------------
 
-            lokasyon = row.get("LocationName")
+    tablo["LocationName"] = tablo["LocationName"].apply(
+        lambda x: "Bilinmiyor" if pd_is_missing(x) else str(x)
+    )
 
-            fiziksel_bolge = row.get("PhysicalZoneName")
+    tablo["PhysicalZoneName"] = tablo["PhysicalZoneName"].apply(
+        lambda x: "Bilinmiyor" if pd_is_missing(x) else str(x)
+    )
 
-            if pd_is_missing(lokasyon):
-                lokasyon = "Bilinmiyor"
+    # Aynı lokasyondaki ardışık kayıtları grupla
+    tablo["grup"] = (
+        (tablo["LocationName"] != tablo["LocationName"].shift()) |
+        (tablo["PhysicalZoneName"] != tablo["PhysicalZoneName"].shift())
+    ).cumsum()
 
-            if pd_is_missing(fiziksel_bolge):
-                fiziksel_bolge = "Bilinmiyor"
+    gruplar = []
 
-            cevap += (
-                f"- {zaman.strftime('%H:%M:%S')} → "
-                f"{lokasyon} / {fiziksel_bolge}\n"
+    for _, grup in tablo.groupby("grup"):
+
+        ilk_zaman = grup["DeviceTime"].min()
+        son_zaman = grup["DeviceTime"].max()
+
+        lokasyon = grup["LocationName"].iloc[0]
+        fiziksel_bolge = grup["PhysicalZoneName"].iloc[0]
+
+        kayit_sayisi = len(grup)
+
+        gruplar.append({
+            "baslangic": ilk_zaman,
+            "bitis": son_zaman,
+            "lokasyon": lokasyon,
+            "fiziksel_bolge": fiziksel_bolge,
+            "kayit_sayisi": kayit_sayisi
+        })
+
+    # --------------------------------------------------
+    # Cevabı oluştur
+    # --------------------------------------------------
+
+    tarih = tablo["DeviceTime"].min().strftime("%d.%m.%Y")
+
+    cevap = (
+        f"{ad_soyad}'ın {tarih} tarihindeki hareket özeti:\n"
+    )
+
+    # Çok uzun liste oluşmasını engelle
+    maksimum_grup = 30
+
+    for grup in gruplar[:maksimum_grup]:
+
+        baslangic = grup["baslangic"]
+        bitis = grup["bitis"]
+
+        lokasyon = grup["lokasyon"]
+        fiziksel_bolge = grup["fiziksel_bolge"]
+
+        if baslangic == bitis:
+            zaman = baslangic.strftime("%H:%M:%S")
+        else:
+            zaman = (
+                f"{baslangic.strftime('%H:%M:%S')} - "
+                f"{bitis.strftime('%H:%M:%S')}"
             )
 
-        return cevap.strip()
+        cevap += (
+            f"- {zaman} → "
+            f"{lokasyon} / {fiziksel_bolge}\n"
+        )
 
+    if len(gruplar) > maksimum_grup:
+        cevap += (
+            f"\n... ve {len(gruplar) - maksimum_grup} "
+            f"hareket grubu daha."
+        )
+
+    # --------------------------------------------------
+    # Genel özet
+    # --------------------------------------------------
+
+    bilinen = tablo[
+        tablo["LocationName"] != "Bilinmiyor"
+    ]
+
+    if not bilinen.empty:
+
+        lokasyon_sayilari = (
+            bilinen["LocationName"]
+            .value_counts()
+        )
+
+        en_cok_lokasyon = lokasyon_sayilari.index[0]
+
+        cevap += (
+            f"\n\nÖzet:"
+            f"\n- Toplam kayıt: {len(tablo)}"
+            f"\n- Bilinen lokasyon kaydı: {len(bilinen)}"
+            f"\n- En sık görülen lokasyon: {en_cok_lokasyon}"
+        )
+
+        return cevap.strip() 
     # --------------------------------------------------
     # LOKASYON ZİYARET SAYISI
     # --------------------------------------------------

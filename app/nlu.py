@@ -320,33 +320,19 @@ def sorguyu_analiz_et(metin):
     saat = saat_bul(metin)
     intent = sorgu_turu_bul(metin)
 
-    if intent == "lokasyonda_kimler":
-        return {
-            "intent": intent,
-            "personel": None,
-            "baslangic": tarih[0] if tarih else None,
-            "bitis": tarih[1] if tarih else None,
-            "saat": saat,
-            "lokasyon": lokasyon_bul(metin)
-        }
-
-    return {
-        "intent": intent,
-        "personel": personel_adi_bul(metin),
-        "baslangic": tarih[0] if tarih else None,
-        "bitis": tarih[1] if tarih else None,
-        "saat": saat
-    }
-
-
-    if intent == "saatte_kimler":
-        return {
+    if intent in ["lokasyonda_kimler", "saatte_kimler"]:
+        sonuc = {
             "intent": intent,
             "personel": None,
             "baslangic": tarih[0] if tarih else None,
             "bitis": tarih[1] if tarih else None,
             "saat": saat
         }
+
+        if intent == "lokasyonda_kimler":
+            sonuc["lokasyon"] = lokasyon_bul(metin)
+
+        return sonuc
 
     return {
         "intent": intent,
